@@ -1,7 +1,15 @@
-/* Shared "Install app" button. Same file in every app. Needs a <button id="installBtn">.
+/* Shared "Install app" button. Same file in every app. Needs a <button id="installBtn">. Optional <span id="hostNote"> shows where the app is hosted.
    Always visible unless the app is already running installed. Uses the browser's install
    prompt when it has one, otherwise shows short steps for the current browser. */
 (function () {
+  var note = document.getElementById('hostNote');
+  if (note) {
+    var h = location.hostname;
+    note.textContent = /workers\.dev$/.test(h) ? 'Hosted on Cloudflare'
+      : /github\.io$/.test(h) ? 'Hosted on GitHub Pages (old address)'
+      : /netlify\.app$/.test(h) ? 'Hosted on Netlify'
+      : (h === 'localhost' || h === '127.0.0.1') ? 'Local test copy' : 'Hosted on ' + h;
+  }
   var btn = document.getElementById('installBtn');
   if (!btn) return;
   var evt = null;

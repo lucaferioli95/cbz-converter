@@ -2,6 +2,9 @@
 
 All notable changes to the CBZ Converter, newest first. The version number is also shown in the app header.
 
+## 1.0.2 - 2026-10-27
+- Small note next to the version showing where the app is hosted (Cloudflare or GitHub Pages), so you can tell the copies apart.
+
 ## 1.0.1 - 2026-10-27
 - The "Install app" button is now always visible (unless the app is already installed). If the browser cannot show its own install prompt, it shows short steps for your browser instead. Shared install.js file used by all my apps.
 
