@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CBZ Converter</title>
+<meta name="theme-color" content="#0b6fa4">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+[hidden]{display:none!important}
+
+  /* Layout: one narrow working column. Masthead with a faint halftone dot field, then drop zone, queue, options, results. */
+  :root {
+    --bg: #eef1f4;
+    --surface: #ffffff;
+    --fg: #14202b;
+    --muted: #55677a;
+    --line: #d3dae1;
+    --line-strong: #aab6c2;
+    --accent: #0b6fa4;
+    --accent-fg: #ffffff;
+    --accent-soft: #dceef8;
+    --dot: #c4d8e6;
+    --ok: #1f7a4d;
+    --err: #b4234a;
+    --font-display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+    --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1720; --surface: #17212c; --fg: #e6edf3; --muted: #93a4b4;
+      --line: #2a3947; --line-strong: #43566a; --accent: #4fb4e8; --accent-fg: #04202f;
+      --accent-soft: #12303f; --dot: #1f3a52; --ok: #5bc38a; --err: #f0708f;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1720; --surface: #17212c; --fg: #e6edf3; --muted: #93a4b4;
+    --line: #2a3947; --line-strong: #43566a; --accent: #4fb4e8; --accent-fg: #04202f;
+    --accent-soft: #12303f; --dot: #1f3a52; --ok: #5bc38a; --err: #f0708f;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.5;
+    padding-block: 28px 56px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+  .wrap > * { min-width: 0; }
+
+  .mast { position: relative; padding-block: 8px 4px; }
+  .mast::after {
+    content: ""; position: absolute; inset: 0 0 0 auto; width: 46%; pointer-events: none;
+    background-image: radial-gradient(var(--dot) 1.5px, transparent 2px);
+    background-size: 11px 11px;
+    -webkit-mask-image: linear-gradient(to left, #000, transparent);
+    mask-image: linear-gradient(to left, #000, transparent);
+  }
+  .mast > * { position: relative; z-index: 1; }
+  .eyebrow { margin: 0 0 6px; font: 500 12px/1.4 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  h1 { margin: 0; font: 800 clamp(2.6rem, 9vw, 3.9rem)/0.95 var(--font-display); letter-spacing: 0.01em; text-transform: uppercase; text-wrap: balance; }
+  .lede { margin: 10px 0 0; max-width: 52ch; color: var(--muted); }
+
+  .drop {
+    display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+    padding: 28px 16px; border: 2px dashed var(--line-strong); border-radius: 6px;
+    background: var(--surface); cursor: pointer; transition: border-color .15s, background-color .15s;
+  }
+  .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  .drop:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .drop input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+  .drop strong { font-size: 16px; font-weight: 600; }
+  .drop span { color: var(--muted); font-size: 13px; }
+  .pick { margin-top: 6px; padding: 8px 16px; border-radius: 4px; background: var(--accent); color: var(--accent-fg) !important; font-weight: 600; font-size: 14px !important; }
+
+  .label { font: 500 12px/1.4 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .tag { display: inline-block; padding: 1px 7px; border: 1px solid var(--line-strong); border-radius: 3px; margin-left: 8px; font: 500 11px/1.5 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+  .example { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .example pre { margin: 0; overflow-x: auto; font: 400 13px/1.7 var(--font-mono); color: var(--fg); }
+  .example .out { color: var(--accent); font-weight: 500; }
+  .example p { margin: 0; color: var(--muted); font-size: 13px; }
+
+  .panel { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+  .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .queue { list-style: none; margin: 0; padding: 0; }
+  .queue li { padding: 12px 16px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: start; }
+  .queue li:last-child { border-bottom: 0; }
+  .fname { font-weight: 600; overflow-wrap: anywhere; }
+  .meta { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .err { color: var(--err); font-size: 13px; }
+  .queue details { grid-column: 1 / -1; font-size: 13px; color: var(--muted); }
+  .queue summary { cursor: pointer; width: fit-content; }
+  .queue summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .folders { margin: 6px 0 0; padding: 0; list-style: none; font: 400 12.5px/1.6 var(--font-mono); max-height: 180px; overflow: auto; }
+  .folders li { display: flex; justify-content: space-between; gap: 12px; padding: 0; border: 0; }
+  .folders span:first-child { overflow-wrap: anywhere; }
+
+  button { font: inherit; cursor: pointer; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .linkbtn { background: none; border: 0; color: var(--muted); padding: 2px 4px; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+  .linkbtn:hover { color: var(--fg); }
+  .primary { background: var(--accent); color: var(--accent-fg); border: 0; border-radius: 4px; padding: 12px 22px; font-weight: 600; font-size: 15px; }
+  .primary:disabled { opacity: .45; cursor: not-allowed; }
+  .secondary { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); border-radius: 4px; padding: 7px 16px; font-weight: 600; font-size: 14px; }
+  .secondary:disabled { opacity: .5; cursor: wait; }
+
+  .opts { padding: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+  legend { padding: 0; margin-bottom: 10px; }
+  .choice { display: grid; grid-template-columns: 18px 1fr; gap: 2px 10px; align-items: start; cursor: pointer; }
+  .choice input { margin: 3px 0 0; width: 16px; height: 16px; accent-color: var(--accent); }
+  .choice b { font-weight: 600; }
+  .choice small { grid-column: 2; color: var(--muted); font-size: 13px; }
+
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+  .status { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; min-width: 0; }
+  progress { width: 100%; height: 8px; accent-color: var(--accent); }
+
+  .results { list-style: none; margin: 0; padding: 0; }
+  .results li { padding: 14px 16px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; align-items: center; }
+  .results li:last-child { border-bottom: 0; }
+  .namerow { display: flex; align-items: center; gap: 4px; min-width: 0; }
+  .rename { flex: 1; min-width: 0; font: inherit; font-weight: 600; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; }
+  .ext { font: 500 13px/1 var(--font-mono); color: var(--muted); }
+  .note { grid-column: 1 / -1; font-size: 13px; color: var(--muted); }
+  .note.good { color: var(--ok); }
+  .note.bad { color: var(--err); }
+  .warn { margin: 0; padding: 12px 16px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); }
+
+  @media (prefers-reduced-motion: reduce) { .drop { transition: none; } }
+
+  .ver { font: 500 12px/1 var(--font-mono); letter-spacing:.04em; color: var(--muted); vertical-align: middle; text-transform:none; }
+  #installBtn { margin-top: 8px; }
+  .foot { text-align:center; color: var(--muted); font-size: 12px; }
+  .foot a { color: var(--muted); }
+</style>
+<script src="jszip.min.js"></script>
+<script src="pdf-lib.min.js"></script>
+</head>
+<body>
+<main class="wrap">
+  <header class="mast">
+    <p class="eyebrow">Runs on your device · nothing is uploaded</p>
+    <h1>CBZ Converter <span class="ver" id="ver"></span></h1><button type="button" class="linkbtn" id="installBtn" hidden>Install app</button>
+    <p class="lede">Turn comic archives into ZIP files, or bind every image inside them into one PDF, in reading order.</p>
+  </header>
+
+  <label class="drop" id="drop" for="file">
+    <input type="file" id="file" accept=".cbz,.zip,application/zip,application/vnd.comicbook+zip" multiple>
+    <strong>Drop CBZ files here</strong>
+    <span>You can add several at once. ZIP archives work too.</span>
+    <span class="pick">Choose files</span>
+  </label>
+
+  <section class="example" id="example" aria-label="Example of a conversion">
+    <div class="label">What it does <span class="tag">Example</span></div>
+<pre>Sample Comic Vol 1.cbz
+├─ Chapter 001/  001.jpg … 034.jpg
+├─ Chapter 002/  001.jpg … 029.jpg
+└─ Chapter 003/  001.jpg … 031.jpg
+      ↓
+<span class="out">sample-comic-vol-1.pdf · 94 pages</span></pre>
+    <p>Chapters are sorted the way a person would, so Chapter 2 comes before Chapter 10.</p>
+  </section>
+
+  <section class="panel" id="queuePanel" hidden>
+    <div class="panel-head">
+      <span class="label">Archives</span>
+      <button type="button" class="linkbtn" id="clear">Remove all</button>
+    </div>
+    <ul class="queue" id="queue"></ul>
+  </section>
+
+  <section class="panel" id="optsPanel" hidden>
+    <div class="opts">
+      <fieldset>
+        <legend class="label">Create</legend>
+        <label class="choice"><input type="checkbox" id="optZip" checked><b>ZIP file</b><small>Same contents, saved with a .zip extension.</small></label>
+        <label class="choice"><input type="checkbox" id="optPdf" checked><b>PDF</b><small>Every image becomes one page, sized to the image.</small></label>
+      </fieldset>
+      <fieldset id="layoutSet">
+        <legend class="label">PDF layout</legend>
+        <label class="choice"><input type="radio" name="layout" value="all" checked autocomplete="off"><b>One big PDF</b><small>All selected files joined into a single PDF, in name order. Inside each file, folder 1 comes first, then folder 2, and so on.</small></label>
+        <label class="choice"><input type="radio" name="layout" value="archive" autocomplete="off"><b>One PDF per file</b><small>Each CBZ becomes its own PDF.</small></label>
+        <label class="choice"><input type="radio" name="layout" value="folders" autocomplete="off"><b>One PDF per folder</b><small>Separate PDFs, delivered together in a ZIP.</small></label>
+      </fieldset>
+    </div>
+  </section>
+
+  <div class="actions" id="actions" hidden>
+    <button type="button" class="primary" id="go">Convert</button>
+    <span class="status" id="status" role="status" aria-live="polite"></span>
+    <progress id="bar" max="1" value="0" hidden></progress>
+  </div>
+
+  <section class="panel" id="resultsPanel" hidden>
+    <div class="panel-head"><span class="label">Ready to save</span></div>
+    <ul class="results" id="results"></ul>
+  </section>
+
+  <p class="foot">Version <span id="ver2"></span> · <a href="https://github.com/lucaferioli95/cbz-converter/blob/main/CHANGELOG.md">Changelog</a></p>
+</main>
+<script>
+
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var IMG_RE = /\.(jpe?g|png|webp|gif|bmp|avif)$/i;
+  var JUNK_RE = /(^|\/)(__MACOSX\/|\._)/;
+  var MIME = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', bmp: 'image/bmp', avif: 'image/avif' };
+  var collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+  var items = [];
+  var results = [];
+  var seq = 0;
+  var working = false;
+  var dl = null;
+
+  function h(tag, attrs) {
+    var el = document.createElement(tag);
+    if (attrs) for (var k in attrs) {
+      if (k === 'class') el.className = attrs[k];
+      else if (k === 'text') el.textContent = attrs[k];
+      else el.setAttribute(k, attrs[k]);
+    }
+    for (var i = 2; i < arguments.length; i++) if (arguments[i]) el.appendChild(arguments[i]);
+    return el;
+  }
+  function fmtBytes(n) {
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n / 1024).toFixed(0) + ' KB';
+    if (n < 1073741824) return (n / 1048576).toFixed(1) + ' MB';
+    return (n / 1073741824).toFixed(2) + ' GB';
+  }
+  function plural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
+  function safe(s) { return (s || 'comic').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim() || 'comic'; }
+  function slug(s) { return safe(s).toLowerCase().replace(/\s+/g, '-'); }
+  function cmpPath(a, b) {
+    var A = a.split('/'), B = b.split('/'), n = Math.min(A.length, B.length);
+    for (var i = 0; i < n; i++) {
+      if (A[i] !== B[i]) { var c = collator.compare(A[i], B[i]); if (c) return c; }
+    }
+    return A.length - B.length;
+  }
+  function saveLocal(name, blob) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 120000);
+  }
+  function tick() { return new Promise(function (r) { setTimeout(r, 0); }); }
+
+  /* ---------- reading archives ---------- */
+  async function scan(item) {
+    var zip = await JSZip.loadAsync(item.file);
+    var entries = Object.values(zip.files).filter(function (e) {
+      return !e.dir && IMG_RE.test(e.name) && !JUNK_RE.test(e.name);
+    });
+    entries.sort(function (a, b) { return cmpPath(a.name, b.name); });
+    var folders = new Map();
+    entries.forEach(function (e) {
+      var i = e.name.lastIndexOf('/');
+      var key = i < 0 ? '' : e.name.slice(0, i);
+      if (!folders.has(key)) folders.set(key, []);
+      folders.get(key).push(e);
+    });
+    if (!entries.length) throw new Error('empty');
+    item.entries = entries;
+    item.folders = folders;
+    item.status = 'ready';
+  }
+
+  async function addFiles(list) {
+    var files = Array.prototype.slice.call(list);
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      var item = { id: ++seq, file: f, status: 'reading' };
+      items.push(item);
+      if (!/\.(cbz|zip)$/i.test(f.name)) {
+        item.status = 'error'; item.error = 'Only .cbz and .zip files are supported.';
+        continue;
+      }
+      render();
+      try { await scan(item); }
+      catch (e) {
+        item.status = 'error';
+        item.error = e && e.message === 'empty'
+          ? 'No images found in this archive.'
+          : 'Could not read this archive. It may be damaged.';
+      }
+    }
+    items.sort(function (x, y) { return collator.compare(x.file.name, y.file.name); });
+    render();
+  }
+
+  /* ---------- rendering ---------- */
+  function render() {
+    var has = items.length > 0;
+    var ready = items.filter(function (i) { return i.status === 'ready'; });
+    $('example').hidden = has;
+    $('queuePanel').hidden = !has;
+    $('optsPanel').hidden = !ready.length;
+    $('actions').hidden = !ready.length;
+    $('layoutSet').hidden = !$('optPdf').checked;
+    $('go').disabled = working || (!$('optZip').checked && !$('optPdf').checked);
+
+    var q = $('queue');
+    q.textContent = '';
+    items.forEach(function (it) {
+      var li = h('li');
+      var left = h('div', null, h('div', { class: 'fname', text: it.file.name }));
+      if (it.status === 'ready') {
+        var imgs = it.entries.length;
+        left.appendChild(h('div', { class: 'meta', text: fmtBytes(it.file.size) + ' · ' + plural(it.folders.size, 'folder') + ' · ' + plural(imgs, 'image') }));
+      } else if (it.status === 'reading') {
+        left.appendChild(h('div', { class: 'meta', text: 'Reading…' }));
+      } else {
+        left.appendChild(h('div', { class: 'err', text: it.error }));
+      }
+      var rm = h('button', { type: 'button', class: 'linkbtn', text: 'Remove' });
+      rm.disabled = working;
+      rm.addEventListener('click', function () { items = items.filter(function (x) { return x !== it; }); render(); });
+      li.appendChild(left); li.appendChild(rm);
+      if (it.status === 'ready') {
+        var d = h('details', null, h('summary', { text: 'Folders and page counts' }));
+        var ul = h('ul', { class: 'folders' });
+        it.folders.forEach(function (list, key) {
+          ul.appendChild(h('li', null, h('span', { text: key || '(top level)' }), h('span', { text: plural(list.length, 'page') })));
+        });
+        d.appendChild(ul); li.appendChild(d);
+      }
+      q.appendChild(li);
+    });
+  }
+
+  function renderResults() {
+    var panel = $('resultsPanel');
+    var ul = $('results');
+    ul.textContent = '';
+    panel.hidden = results.length === 0;
+    results.forEach(function (r) {
+      var li = h('li');
+      var dot = r.filename.lastIndexOf('.');
+      var ext = r.filename.slice(dot);
+      var inp = h('input', { type: 'text', class: 'rename', value: r.filename.slice(0, dot), 'aria-label': 'File name', spellcheck: 'false', autocomplete: 'off' });
+      inp.addEventListener('input', function () {
+        r.filename = safe(inp.value.replace(/\.(pdf|zip)$/i, '')) + ext;
+      });
+      li.appendChild(h('div', null,
+        h('div', { class: 'namerow' }, inp, h('span', { class: 'ext', text: ext })),
+        h('div', { class: 'meta', text: r.meta })));
+      var note = h('div', { class: 'note' });
+      var btn = h('button', { type: 'button', class: 'secondary', text: 'Save' });
+      btn.addEventListener('click', async function () {
+        btn.disabled = true; note.className = 'note'; note.textContent = '';
+        try {
+          if (dl) {
+            await dl.save({ filename: r.filename, data: r.blob });
+            note.className = 'note good'; note.textContent = 'Saved.';
+          } else {
+            saveLocal(r.filename, r.blob);
+            note.className = 'note good'; note.textContent = 'Download started. Your browser saves it to its download folder.';
+          }
+        } catch (e) {
+          var c = e && e.code;
+          note.className = 'note bad';
+          note.textContent = c === 'declined' ? 'Not saved.'
+            : c === 'too_large' ? 'This file is too large to save from here.'
+            : c === 'rate_limited' ? 'Another save is waiting. Try again in a moment.'
+            : 'Could not save this file.';
+        } finally { btn.disabled = false; }
+      });
+      li.appendChild(btn);
+      if (r.warning) li.appendChild(h('div', { class: 'note bad', text: r.warning }));
+      li.appendChild(note);
+      ul.appendChild(li);
+    });
+  }
+
+  /* ---------- converting ---------- */
+  async function toJpeg(bytes, ext) {
+    var bmp = await createImageBitmap(new Blob([bytes], { type: MIME[ext] || '' }));
+    var c = document.createElement('canvas');
+    c.width = bmp.width; c.height = bmp.height;
+    var ctx = c.getContext('2d');
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(bmp, 0, 0);
+    if (bmp.close) bmp.close();
+    var blob = await new Promise(function (r) { c.toBlob(r, 'image/jpeg', 0.92); });
+    if (!blob) throw new Error('encode');
+    return new Uint8Array(await blob.arrayBuffer());
+  }
+
+  async function buildPdf(entries, title, onPage) {
+    var pdf = await PDFLib.PDFDocument.create();
+    pdf.setTitle(title);
+    pdf.setProducer('CBZ Converter');
+    var pages = 0, skipped = 0;
+    for (var i = 0; i < entries.length; i++) {
+      var e = entries[i];
+      var ext = e.name.split('.').pop().toLowerCase();
+      onPage(e);
+      try {
+        var bytes = await e.async('uint8array');
+        var img;
+        try {
+          if (ext === 'jpg' || ext === 'jpeg') img = await pdf.embedJpg(bytes);
+          else if (ext === 'png') img = await pdf.embedPng(bytes);
+          else throw new Error('convert');
+        } catch (inner) {
+          img = await pdf.embedJpg(await toJpeg(bytes, ext));
+        }
+        var page = pdf.addPage([img.width, img.height]);
+        page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+        pages++;
+      } catch (err) { skipped++; }
+      await tick();
+    }
+    return { bytes: await pdf.save(), pages: pages, skipped: skipped };
+  }
+
+  function busy(on) {
+    working = on;
+    $('bar').hidden = !on;
+    $('go').textContent = on ? 'Converting…' : 'Convert';
+    render();
+  }
+
+  async function convert() {
+    var ready = items.filter(function (i) { return i.status === 'ready'; });
+    if (!ready.length) return;
+    var wantZip = $('optZip').checked, wantPdf = $('optPdf').checked;
+    if (!wantZip && !wantPdf) return;
+    var layout = document.querySelector('input[name=layout]:checked').value;
+    results = []; renderResults();
+    busy(true);
+    var status = $('status'), bar = $('bar');
+    ready.sort(function (x, y) { return collator.compare(x.file.name, y.file.name); });
+    function skipNote(n) { return n ? plural(n, 'image') + ' could not be read and ' + (n === 1 ? 'was' : 'were') + ' skipped.' : ''; }
+    try {
+      if (wantZip) {
+        ready.forEach(function (it) {
+          var zb = safe(it.file.name.replace(/\.(cbz|zip)$/i, ''));
+          results.push({ filename: zb + '.zip', blob: it.file, meta: fmtBytes(it.file.size) + ' · same contents as the CBZ' });
+        });
+      }
+      if (wantPdf && layout === 'all') {
+        var all = [];
+        ready.forEach(function (it) { all = all.concat(it.entries); });
+        var firstName = safe(ready[0].file.name.replace(/\.(cbz|zip)$/i, ''));
+        var lastName = safe(ready[ready.length - 1].file.name.replace(/\.(cbz|zip)$/i, ''));
+        var merged = ready.length > 1 ? firstName + ' to ' + lastName : firstName;
+        var total = all.length, done = 0;
+        bar.max = total; bar.value = 0;
+        var rAll = await buildPdf(all, merged, function (e) {
+          done++; bar.value = done;
+          status.textContent = 'Page ' + done + ' of ' + total + ' · ' + e.name;
+        });
+        results.push({
+          filename: slug(merged) + '.pdf',
+          blob: new Blob([rAll.bytes], { type: 'application/pdf' }),
+          meta: plural(rAll.pages, 'page') + ' from ' + plural(ready.length, 'file') + ' · ' + fmtBytes(rAll.bytes.length),
+          warning: skipNote(rAll.skipped)
+        });
+      } else if (wantPdf) {
+        for (var n = 0; n < ready.length; n++) {
+          var it = ready[n];
+          var base = safe(it.file.name.replace(/\.(cbz|zip)$/i, ''));
+          var prefix = ready.length > 1 ? 'File ' + (n + 1) + ' of ' + ready.length + ' · ' : '';
+          var total2 = it.entries.length, done2 = 0;
+          bar.max = total2; bar.value = 0;
+          var onPage = function (e) {
+            done2++; bar.value = done2;
+            status.textContent = prefix + 'Page ' + done2 + ' of ' + total2 + ' · ' + e.name;
+          };
+          if (layout === 'archive' || it.folders.size < 2) {
+            var r = await buildPdf(it.entries, base, onPage);
+            results.push({
+              filename: slug(base) + '.pdf',
+              blob: new Blob([r.bytes], { type: 'application/pdf' }),
+              meta: plural(r.pages, 'page') + ' · ' + fmtBytes(r.bytes.length),
+              warning: skipNote(r.skipped)
+            });
+          } else {
+            var z = new JSZip(), used = {}, pageCount = 0, skippedAll = 0;
+            for (var entry of it.folders) {
+              var key = entry[0], list = entry[1];
+              var name = safe((key || base).split('/').join(' - '));
+              while (used[name]) name += '_';
+              used[name] = 1;
+              var fr = await buildPdf(list, name, onPage);
+              z.file(name + '.pdf', fr.bytes);
+              pageCount += fr.pages; skippedAll += fr.skipped;
+            }
+            status.textContent = prefix + 'Packing PDFs…';
+            var zz = await z.generateAsync({ type: 'blob', compression: 'STORE' });
+            results.push({
+              filename: slug(base) + '-pdfs.zip',
+              blob: zz,
+              meta: plural(it.folders.size, 'PDF') + ' · ' + plural(pageCount, 'page') + ' · ' + fmtBytes(zz.size),
+              warning: skipNote(skippedAll)
+            });
+          }
+        }
+      }
+      status.textContent = 'Done. ' + plural(results.length, 'file') + ' ready to save.';
+    } catch (e) {
+      status.textContent = 'Something went wrong while converting. Try fewer files at once.';
+    } finally {
+      busy(false);
+      renderResults();
+    }
+  }
+
+  /* ---------- wiring ---------- */
+  var drop = $('drop');
+  ['dragenter', 'dragover'].forEach(function (t) {
+    drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.add('over'); });
+  });
+  ['dragleave', 'drop'].forEach(function (t) {
+    drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.remove('over'); });
+  });
+  drop.addEventListener('drop', function (e) {
+    if (e.dataTransfer && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+  });
+  $('file').addEventListener('change', function (e) {
+    if (e.target.files.length) addFiles(e.target.files);
+    e.target.value = '';
+  });
+  $('clear').addEventListener('click', function () {
+    if (working) return;
+    items = []; results = []; $('status').textContent = ''; render(); renderResults();
+  });
+  $('go').addEventListener('click', convert);
+  ['optZip', 'optPdf'].forEach(function (id) { $(id).addEventListener('change', render); });
+
+  render();
+})();
+
+</script>
+<script>
+var APP_VERSION = '1.0.0';
+document.getElementById('ver').textContent = 'v' + APP_VERSION;
+document.getElementById('ver2').textContent = APP_VERSION;
+if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) navigator.serviceWorker.register('sw.js').catch(function () {});
+var installEvt = null;
+window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); installEvt = e; document.getElementById('installBtn').hidden = false; });
+window.addEventListener('appinstalled', function () { installEvt = null; document.getElementById('installBtn').hidden = true; });
+document.getElementById('installBtn').addEventListener('click', function () { if (!installEvt) return; installEvt.prompt(); installEvt.userChoice.finally(function () { installEvt = null; document.getElementById('installBtn').hidden = true; }); });
+</script>
+</body>
+</html>
