@@ -2,6 +2,9 @@
 
 All notable changes to the CBZ Converter, newest first. The version number is also shown in the app header.
 
+## 1.0.3 - 2026-10-30
+- Once the app is installed, the install button turns into "Uninstall app" and shows how to remove it (browsers do not let a web app remove itself, so it shows the steps).
+
 ## 1.0.2 - 2026-10-27
 - Small note next to the version showing where the app is hosted (Cloudflare or GitHub Pages), so you can tell the copies apart.
 
